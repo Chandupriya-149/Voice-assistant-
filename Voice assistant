@@ -1,54 +1,75 @@
  import speech_recognition as sr
 import pyttsx3
 import datetime
-import webbrowser
-import wikipedia
+import pywhatkit
+import pyaudio
 
-# Initialize the recognizer and TTS engine
+# Initialize the text-to-speech engine
 engine = pyttsx3.init()
-recognizer = sr.Recognizer()
+engine.setProperty('rate', 150)  # Speech speed
+engine.setProperty('volume', 1.0)  # Max volume
 
-def speak(text):
+# Optional: Set voice (try voices[0] or voices[1] depending on system)
+voices = engine.getProperty('voices')
+engine.setProperty('voice', voices[0].id)
+
+def talk(text):
+    print(f"Assistant: {text}")  # Debug print
     engine.say(text)
     engine.runAndWait()
 
-def takeCommand():
+def listen():
+    listener = sr.Recognizer()
     with sr.Microphone() as source:
         print("Listening...")
-        audio = recognizer.listen(source)
+        listener.adjust_for_ambient_noise(source)
+        audio = listener.listen(source)
+
     try:
-        print("Recognizing...")
-        query = recognizer.recognize_google(audio)
-        print(f"You said: {query}")
-        return query.lower()
-    except:
-        speak("Sorry, I didn't catch that.")
+        command = listener.recognize_google(audio)
+        command = command.lower().strip()
+        print(f"You said: {command}")
+    except sr.UnknownValueError:
+        talk("Sorry, I did not understand that.")
+        return ""
+    except sr.RequestError:
+        talk("Network error.")
         return ""
 
-def main():
-    speak("Hello! I am your voice assistant.")
-    while True:
-        query = takeCommand()
+    return command
 
-        if "hello" in query:
-            speak("Hi there! What can I do for you?")
-        elif "time" in query:
-            strTime = datetime.datetime.now().strftime("%H:%M")
-            speak(f"The time is {strTime}")
-        elif "date" in query:
-            today = datetime.date.today()
-            speak(f"Today's date is {today.strftime('%B %d, %Y')}")
-        elif "search" in query:
-            speak("What should I search for?")
-            search_query = takeCommand()
-            webbrowser.open(f"https://www.google.com/search?q={search_query}")
-            speak(f"Searching for {search_query}")
-        elif "who is" in query:
-            person = query.replace("who is", "")
-            info = wikipedia.summary(person, sentences=2)
-            speak(info)
-        elif "exit" in query or "bye" in query:
-            speak("Goodbye!")
+def run_assistant():
+    talk("Hello, how can I help you?")
+    while True:
+        command = listen()
+
+        if 'hello' in command:
+            talk("Hi there!")
+
+        elif 'time' in command:
+            current_time = datetime.datetime.now().strftime('%I:%M %p')
+            talk(f"The current time is {current_time}")
+
+        elif 'date' in command:
+            current_date = datetime.datetime.now().strftime('%A, %B %d, %Y')
+            talk(f"Today is {current_date}")
+
+        elif 'search for' in command:
+            topic = command.replace('search for', '').strip()
+            talk(f"Searching the web for {topic}")
+            pywhatkit.search(topic)
+
+        elif 'play' in command:
+            song = command.replace('play', '').strip()
+            talk(f"Playing {song} on YouTube")
+            pywhatkit.playonyt(song)
+
+        elif 'stop' in command or 'exit' in command:
+            talk("Goodbye!")
             break
 
-if __name__ == "__main__":
+        elif command:
+            talk("I didn't catch that. Please try again.")
+
+# Start the assistant
+run_assistant()
